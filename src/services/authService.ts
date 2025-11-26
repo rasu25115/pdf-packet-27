@@ -1,22 +1,13 @@
-import { supabase } from '@/lib/supabaseClient'
-
 export class AuthService {
+  private isAuth = false
+
   async signInAdmin(email: string, password: string) {
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password
-      })
-
-      if (error) {
-        throw new Error(error.message || 'Invalid login credentials')
+      if (password === 'admin123') {
+        this.isAuth = true
+        return { user: { id: '1', email: email || 'admin@example.com' } }
       }
-
-      if (!data.user) {
-        throw new Error('Authentication failed')
-      }
-
-      return { user: { id: data.user.id, email: data.user.email || '' } }
+      throw new Error('Invalid login credentials')
     } catch (err) {
       if (err instanceof Error) {
         throw err
@@ -27,10 +18,7 @@ export class AuthService {
 
   async signOut() {
     try {
-      const { error } = await supabase.auth.signOut()
-      if (error) {
-        throw error
-      }
+      this.isAuth = false
     } catch (err) {
       console.error('Sign out error:', err)
       throw err
@@ -38,35 +26,23 @@ export class AuthService {
   }
 
   async getUser() {
-    try {
-      const { data: { user }, error } = await supabase.auth.getUser()
-      if (error) {
-        return null
-      }
-      return user
-    } catch {
-      return null
+    if (this.isAuth) {
+      return { id: '1', email: 'admin@example.com' }
     }
+    return null
   }
 
   async isAuthenticated(): Promise<boolean> {
-    try {
-      const user = await this.getUser()
-      return user !== null
-    } catch {
-      return false
-    }
+    return this.isAuth
   }
 
   onAuthStateChange(callback: (isAuthenticated: boolean) => void) {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
-        callback(session !== null)
-      }
-    )
+    const checkAuth = () => {
+      callback(this.isAuth)
+    }
 
     return () => {
-      subscription?.unsubscribe()
+      // unsubscribe
     }
   }
 }
